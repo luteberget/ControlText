@@ -1,0 +1,150 @@
+<html>
+<title>CNL editor</title>
+<link rel="stylesheet" type="text/css" href="style.css" />
+
+<body>
+
+<svg id="mycanvas"></svg> <!-- to draw braces higlighting on -->
+
+<h1>🚂🚃  RailCNL editor  🚃🚃</h1>
+<!--<div id="menustatus"></div>-->
+<div id="measure"></div>
+<div>
+<div id="contentwrapper">&gt;<div id="content"></div>
+</div>
+<!--<textarea id="output"></textarea>-->
+
+<script src="d3.v3.min.js" charset="utf-8"></script> <!-- for drawing SVG braces -->
+<script src="jquery-3.1.1.min.js"></script>
+<script src="prelexer.js"></script> <!-- normalizes and converts text from <input> to parser format -->
+<script src="curlyBrace.js"></script> <!-- SVG path displaying curly brackets/braces. -->
+<!--<script src="typeahead.bundle.js"></script>--> <!-- Twitter Typeahead library https://github.com/twitter/typeahead.js/issues/1618 . No longer using it, as it does not support preview-select so well. It assumes that you may temporarily change the contents of the <input> while hovering alternatives, which can feel to me like "losing" work. Will prefer an approach where the selection must be "committed" to have an effect on the <input>. Recent forks by Algolia and Corejs seem to have the same assumption.-->
+<script src="menu.js"></script> <!-- menu/autocomplete based on Complete-ly (?) http://complete-ly.appspot.com/  -->
+<script src="main.js"></script>
+
+<!-- load Emscripten module and memory contents (?) -->
+<!-- can this be moved to an external file? -->
+<script>
+      //otherCats = [];
+      var Module = {
+      postRun: [function() {
+        var init = Module.x_cnl_init("RailCNL.pgf","RailCNLChunkedNor");
+         Module.print("CNL init: " + JSON.stringify(init));
+         parse_fun = function(cat, text) {
+           var convert = function cnv(x) {
+             if(x.type == "intlit") return { type: x.type, value: x.integer };
+             if(x.type == "fltlit") return { type: x.type, value: x.floating };
+             if(x.type == "strlit") return { type: x.type, value: x.name };
+             if(x.type == "apply") {
+               var args = [];
+               var n = x.args.size();
+               for(var i = 0; i < n; i++) {
+                 args.push(cnv(x.args.get(i)));
+               }
+               x.args.delete();
+
+               return { type: x.type, fun: x.name, n:n, args: args };
+             }
+           }
+           var output = Module.x_cnl_parse(cat, text);
+           if(output.type == "Ok") {
+             output.result = convert(output.result);
+           } 
+           return output;
+         };
+
+         //List all categories
+         var catVec = Module.x_cnl_categories();
+         cats = [];
+         for(var i = 0; i < catVec.size(); i++) {
+           cats.push(catVec.get(i));
+         }
+         catVec.delete();
+
+         // List all functions/constructors
+         var funVec = Module.x_cnl_functions();
+          funs = [];
+          for(var i = 0; i < funVec.size(); i++) {
+            var el = funVec.get(i);
+            var args = [];
+            //var fromString = false;
+            for(var j = 0; j < el.args.size(); j++) {
+              args.push(el.args.get(j));
+              //if(args[j] == "String") fromString = true;
+            }
+            //if(fromString) visCats.push({type: "underline", fun: el.name, color:"gray"});
+            funs.push({ name: el.name, cat: el.cat, args: args});
+            el.args.delete();
+          }
+         funVec.delete();
+
+         update("");
+      }],
+        preRun: [],
+        print: function(x) { console.log("stdout: " +x); },
+        //print: (function() {
+        //  //var element = document.getElementById('output');
+      ////console.log("PRINT ELEMENT");
+      ////console.log(element);
+
+        //  //if (element) element.value = ''; // clear browser cache
+        //  return function(text) {
+        //    //if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+        //    // These replacements are necessary if you render to raw HTML
+        //    //text = text.replace(/&/g, "&amp;");
+        //    //text = text.replace(/</g, "&lt;");
+        //    //text = text.replace(/>/g, "&gt;");
+        //    //text = text.replace('\n', '<br>', 'g');
+        //    console.log(text);
+        //    //if (element) {
+        //      //element.value += text + "\n";
+        //      //element.scrollTop = element.scrollHeight; // focus on bottom
+        //    //}
+        //  };
+        //})(),
+        printErr: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          if (0) { // XXX disabled for safety typeof dump == 'function') {
+            dump(text + '\n'); // fast, straight to the real console
+          } else {
+            console.error(text);
+          }
+        },
+        setStatus: function(text) {
+          Module.print("Status: " + text);
+        }
+      };
+      Module.setStatus('Downloading...');
+
+      window.onerror = function(event) {
+        // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
+        Module.setStatus('Exception thrown, see JavaScript console');
+        Module.setStatus = function(text) {
+          if (text) Module.printErr('[post-exception status] ' + text);
+        };
+      };
+    </script>
+    <script>
+
+          (function() {
+            var memoryInitializer = 'js-pgf.html.mem';
+            if (typeof Module['locateFile'] === 'function') {
+              memoryInitializer = Module['locateFile'](memoryInitializer);
+            } else if (Module['memoryInitializerPrefixURL']) {
+              memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
+            }
+            var xhr = Module['memoryInitializerRequest'] = new XMLHttpRequest();
+            xhr.open('GET', memoryInitializer, true);
+            xhr.responseType = 'arraybuffer';
+            xhr.send(null);
+          })();
+
+          var script = document.createElement('script');
+          script.src = "js-pgf.js";
+          document.body.appendChild(script);
+
+</script>
+
+</body>
+</html>
+ 
