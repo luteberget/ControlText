@@ -1,3 +1,10 @@
+#prompt {
+  position: absolute;
+  margin-left: -1em;
+  font-weight: bolder;
+  font-size: 150%;
+  margin-top: -5pt;
+}
 
 body {
 font-family: "Roboto Slab", serif;
@@ -53,6 +60,8 @@ height:100%;
 
 #content input {
 z-index: 3;
+border: none;
+padding: 5pt;
 }
 
 #content {
